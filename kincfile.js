@@ -1,5 +1,6 @@
-let project = new Project('Krom');
+let project = new Project('kmake');
 
+project.cmd = true;
 project.cpp11 = true;
 project.linkTimeOptimization = false;
 project.addFile('Sources/**');
