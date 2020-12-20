@@ -3896,3 +3896,41 @@ int kickstart(int argc, char **argv) {
 
 	return 0;
 }
+
+int main(int argc, char **argv) {
+	FILE *file = fopen("kfile.js", "rb");
+	fseek(file, 0, SEEK_END);
+	size_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	char *code = (char *)malloc(size + 1);
+	fread(code, 1, size, file);
+	code[size] = 0;
+
+#ifdef KORE_WINDOWS
+	AttachProcess(GetModuleHandle(nullptr));
+#else
+	AttachProcess(nullptr);
+#endif
+
+#ifdef NDEBUG
+	JsCreateRuntime(JsRuntimeAttributeEnableIdleProcessing, nullptr, &runtime);
+#else
+	JsCreateRuntime(JsRuntimeAttributeAllowScriptInterrupt, nullptr, &runtime);
+#endif
+
+	JsCreateContext(runtime, &context);
+	JsAddRef(context, nullptr);
+
+	JsSetCurrentContext(context);
+
+	// bindFunctions();
+
+	JsCreateExternalArrayBuffer(code, size, nullptr, nullptr, &script);
+	JsCreateString("kfile.js", strlen("kfile.js"), &source);
+
+	JsValueRef result;
+	JsRun(script, cookie, source, JsParseScriptAttributeNone, &result);
+
+	return 0;
+}
