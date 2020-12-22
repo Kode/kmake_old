@@ -3897,16 +3897,51 @@ int kickstart(int argc, char **argv) {
 	return 0;
 }
 
-int main(int argc, char **argv) {
-	FILE *file = fopen("kfile.js", "rb");
+static char *find_kmake_dir(char *exe_path) {
+	size_t length = strlen(exe_path);
+	const int max_path_count = 4;
+	int path_count = 0;
+
+	for (size_t i = length - 1; i > 0; --i) {
+		if (exe_path[i] == '\\') {
+			++path_count;
+			if (path_count == max_path_count) {
+				char *path = (char *)malloc(MAX_PATH);
+				strncpy(path, exe_path, i);
+				path[i] = 0;
+				return path;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+static void run_file(const char *file_path, const char *name) {
+	FILE *file = fopen(file_path, "rb");
 	fseek(file, 0, SEEK_END);
 	size_t size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
 	char *code = (char *)malloc(size + 1);
+	assert(code != NULL);
 	fread(code, 1, size, file);
 	code[size] = 0;
 
+	JsValueRef script;
+	JsCreateExternalArrayBuffer(code, size, nullptr, nullptr, &script);
+
+	JsValueRef source;
+	JsCreateString(name, strlen(name), &source);
+
+	JsValueRef result;
+	static JsSourceContext next_cookie = 1234;
+	JsSourceContext cookie = next_cookie;
+	next_cookie += 1;
+	JsRun(script, cookie, source, JsParseScriptAttributeNone, &result);
+}
+
+int main(int argc, char **argv) {
 #ifdef KORE_WINDOWS
 	AttachProcess(GetModuleHandle(nullptr));
 #else
@@ -3926,11 +3961,12 @@ int main(int argc, char **argv) {
 
 	// bindFunctions();
 
-	JsCreateExternalArrayBuffer(code, size, nullptr, nullptr, &script);
-	JsCreateString("kfile.js", strlen("kfile.js"), &source);
+	char *path = find_kmake_dir(argv[0]);
+	strcat(path, "\\Library\\project.js");
 
-	JsValueRef result;
-	JsRun(script, cookie, source, JsParseScriptAttributeNone, &result);
+	run_file(path, "project.js");
+
+	run_file("kfile.js", "kfile.js");
 
 	return 0;
 }
