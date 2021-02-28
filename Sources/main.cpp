@@ -3816,13 +3816,12 @@ static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord ref
 	next_cookie += 1;
 
 	JsModuleRecord record;
-	/*JsValueRef specifier;
-	const char *name = "whatever";
-	JsCreateString(name, strlen(name), &specifier);*/
 	JsErrorCode err = JsInitializeModuleRecord(nullptr, specifier, &record);
+	assert(err == JsErrorCode::JsNoError);
 
 	JsValueRef exception;
 	err = JsParseModuleSource(record, next_cookie, (BYTE *)code, size, JsParseModuleSourceFlags_DataIsUTF8, &exception);
+	assert(err == JsErrorCode::JsNoError);
 
 	*dependentModuleRecord = record;
 
@@ -3863,7 +3862,6 @@ static void run_file(const char *file_path, const char *name) {
 
 	JsSourceContext cookie = next_cookie;
 	next_cookie += 1;
-	// JsRun(script, cookie, source, JsParseScriptAttributeNone, &result);
 
 	JsModuleRecord record;
 	JsValueRef specifier;
@@ -3875,12 +3873,12 @@ static void run_file(const char *file_path, const char *name) {
 
 	JsValueRef exception;
 	err = JsParseModuleSource(record, next_cookie, (BYTE *)code, import_size + 1 + size, JsParseModuleSourceFlags_DataIsUTF8, &exception);
+	assert(err == JsErrorCode::JsNoError);
+	free(code);
 
 	JsValueRef result;
 	err = JsModuleEvaluation(record, &result);
-
-	int a = 3;
-	++a;
+	assert(err == JsErrorCode::JsNoError);
 }
 
 int main(int argc, char **argv) {
