@@ -3762,7 +3762,7 @@ int kickstart(int argc, char **argv) {
 	return 0;
 }
 
-static char *find_kmake_dir(char *exe_path) {
+static void find_kmake_dir(char *exe_path, char *kmake_dir) {
 	size_t length = strlen(exe_path);
 	const int max_path_count = 4;
 	int path_count = 0;
@@ -3771,18 +3771,37 @@ static char *find_kmake_dir(char *exe_path) {
 		if (exe_path[i] == '\\') {
 			++path_count;
 			if (path_count == max_path_count) {
-				char *path = (char *)malloc(MAX_PATH);
-				strncpy(path, exe_path, i);
-				path[i] = 0;
-				return path;
+				strncpy(kmake_dir, exe_path, i);
+				kmake_dir[i] = 0;
+				return;
 			}
 		}
 	}
 
-	return NULL;
+	return;
 }
 
-static void run_file(const char *file_path, const char *name) {
+static char kmake_dir[256];
+static JsSourceContext next_cookie = 1234;
+
+static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord referencingModule, _In_ JsValueRef specifier,
+                                                         _Outptr_result_maybenull_ JsModuleRecord *dependentModuleRecord) {
+	char filename[256];
+	size_t length;
+	JsCopyString(specifier, filename, 255, &length);
+	filename[length] = 0;
+
+	char file_path[256];
+	strcpy(file_path, kmake_dir);
+	strcat(file_path, "/Library/");
+	if (filename[0] == '.') {
+		strcat(file_path, &filename[1]);
+	}
+	else {
+		strcat(file_path, filename);
+	}
+	strcat(file_path, ".js");
+
 	FILE *file = fopen(file_path, "rb");
 	fseek(file, 0, SEEK_END);
 	size_t size = ftell(file);
@@ -3793,17 +3812,75 @@ static void run_file(const char *file_path, const char *name) {
 	fread(code, 1, size, file);
 	code[size] = 0;
 
-	JsValueRef script;
-	JsCreateExternalArrayBuffer(code, size, nullptr, nullptr, &script);
+	JsSourceContext cookie = next_cookie;
+	next_cookie += 1;
+
+	JsModuleRecord record;
+	/*JsValueRef specifier;
+	const char *name = "whatever";
+	JsCreateString(name, strlen(name), &specifier);*/
+	JsErrorCode err = JsInitializeModuleRecord(nullptr, specifier, &record);
+
+	JsValueRef exception;
+	err = JsParseModuleSource(record, next_cookie, (BYTE *)code, size, JsParseModuleSourceFlags_DataIsUTF8, &exception);
+
+	*dependentModuleRecord = record;
+
+	return JsErrorCode::JsNoError;
+}
+
+JsErrorCode CHAKRA_CALLBACK notify_module_ready(_In_opt_ JsModuleRecord referencingModule, _In_opt_ JsValueRef exceptionVar) {
+	return JsErrorCode::JsNoError;
+}
+
+static void run_file(const char *file_path, const char *name) {
+	FILE *file = fopen(file_path, "rb");
+	fseek(file, 0, SEEK_END);
+	size_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	char import_path[256];
+	strcpy(import_path, kmake_dir);
+	strcat(import_path, "\\Library\\import.js");
+
+	FILE *import_file = fopen(import_path, "rb");
+	fseek(import_file, 0, SEEK_END);
+	size_t import_size = ftell(import_file);
+	fseek(import_file, 0, SEEK_SET);
+
+	char *code = (char *)malloc(import_size + 1 + size + 1);
+	assert(code != NULL);
+	fread(code, 1, import_size, import_file);
+	code[import_size] = '\n';
+	fread(&code[import_size + 1], 1, size, file);
+	code[import_size + 1 + size] = 0;
+
+	fclose(import_file);
+	fclose(file);
 
 	JsValueRef source;
 	JsCreateString(name, strlen(name), &source);
 
-	JsValueRef result;
-	static JsSourceContext next_cookie = 1234;
 	JsSourceContext cookie = next_cookie;
 	next_cookie += 1;
-	JsRun(script, cookie, source, JsParseScriptAttributeNone, &result);
+	// JsRun(script, cookie, source, JsParseScriptAttributeNone, &result);
+
+	JsModuleRecord record;
+	JsValueRef specifier;
+	JsCreateString(name, strlen(name), &specifier);
+	JsErrorCode err = JsInitializeModuleRecord(nullptr, specifier, &record);
+
+	JsSetModuleHostInfo(record, JsModuleHostInfo_FetchImportedModuleCallback, fetch_imported_module);
+	JsSetModuleHostInfo(record, JsModuleHostInfo_NotifyModuleReadyCallback, notify_module_ready);
+
+	JsValueRef exception;
+	err = JsParseModuleSource(record, next_cookie, (BYTE *)code, import_size + 1 + size, JsParseModuleSourceFlags_DataIsUTF8, &exception);
+
+	JsValueRef result;
+	err = JsModuleEvaluation(record, &result);
+
+	int a = 3;
+	++a;
 }
 
 int main(int argc, char **argv) {
@@ -3826,10 +3903,7 @@ int main(int argc, char **argv) {
 
 	bindFunctions();
 
-	char *path = find_kmake_dir(argv[0]);
-	strcat(path, "\\Library\\project.js");
-
-	run_file(path, "project.js");
+	find_kmake_dir(argv[0], kmake_dir);
 
 	run_file("kfile.js", "kfile.js");
 
