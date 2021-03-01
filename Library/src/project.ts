@@ -24,7 +24,7 @@ export class Project {
 	}
 
 	async addProject(projectPath: string) {
-
+		return new Project('test');
 	}
 
 	setDebugDir(dir: string) {

@@ -15,6 +15,7 @@ export class Project {
         this.assets.push(pattern);
     }
     async addProject(projectPath) {
+        return new Project('test');
     }
     setDebugDir(dir) {
     }

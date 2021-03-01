@@ -3828,8 +3828,12 @@ static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord ref
 	return JsErrorCode::JsNoError;
 }
 
-JsErrorCode CHAKRA_CALLBACK notify_module_ready(_In_opt_ JsModuleRecord referencingModule, _In_opt_ JsValueRef exceptionVar) {
+static JsErrorCode CHAKRA_CALLBACK notify_module_ready(_In_opt_ JsModuleRecord referencingModule, _In_opt_ JsValueRef exceptionVar) {
 	return JsErrorCode::JsNoError;
+}
+
+static void CHAKRA_CALLBACK promise_continuation_callback(_In_ JsValueRef task, _In_opt_ void *callbackState) {
+	*(void **)callbackState = task;
 }
 
 static void run_file(const char *file_path, const char *name) {
@@ -3901,9 +3905,20 @@ int main(int argc, char **argv) {
 
 	bindFunctions();
 
+	JsValueRef callback = JS_INVALID_REFERENCE;
+	JsSetPromiseContinuationCallback(promise_continuation_callback, &callback);
+
 	find_kmake_dir(argv[0], kmake_dir);
 
 	run_file("kfile.js", "kfile.js");
+
+	JsValueRef task = JS_INVALID_REFERENCE;
+	while (callback != JS_INVALID_REFERENCE) {
+		task = callback;
+		callback = JS_INVALID_REFERENCE;
+		JsValueRef result;
+		JsCallFunction(task, nullptr, 0, &result);
+	}
 
 	return 0;
 }
