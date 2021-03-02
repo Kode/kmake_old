@@ -36,14 +36,14 @@ namespace {
 	std::vector<Message> queuedMessages;
 	volatile int step = 0;
 
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 	SOCKET client_socket;
 #else
 	int client_socket;
 #endif
 
 	static void error_exit(const char *error_message) {
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 		fprintf(stderr, "%s: %d\n", error_message, WSAGetLastError());
 #else
 		fprintf(stderr, "%s: %s\n", error_message, strerror(errno));
@@ -51,7 +51,7 @@ namespace {
 		exit(EXIT_FAILURE);
 	}
 
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 	void echo(SOCKET client_socket)
 #else
 	void echo(int client_socket)
@@ -71,7 +71,7 @@ namespace {
 	}
 
 	void startServerInThread(void *) {
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 		SOCKET sock, fd;
 		int len;
 		WORD wVersionRequested = MAKEWORD(1, 1);
@@ -104,7 +104,7 @@ namespace {
 			kinc_log(KINC_LOG_LEVEL_INFO, "Data from address: %s", inet_ntoa(client.sin_addr));
 			echo(fd);
 
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 			closesocket(fd);
 #else
 			close(fd);

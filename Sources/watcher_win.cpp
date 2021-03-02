@@ -1,7 +1,6 @@
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 
-#include <kinc/log.h>
-#include <kinc/threads/thread.h>
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -36,9 +35,11 @@ namespace {
 }
 
 extern "C" void watchDirectories(char *path1, char *path2) {
+#if 0
 	kinc_thread_t thread;
 	kinc_thread_init(&thread, watch, path1);
 	kinc_thread_init(&thread, watch, path2);
+#endif
 }
 
 #endif

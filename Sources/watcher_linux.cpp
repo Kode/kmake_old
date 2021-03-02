@@ -1,4 +1,4 @@
-#ifdef KORE_LINUX
+#ifdef __linux__
 
 #include <kinc/log.h>
 #include <kinc/threads/thread.h>

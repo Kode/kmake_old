@@ -7,7 +7,7 @@
 #include <Windows.h>
 #endif
 
-#ifdef KORE_ANDROID
+#ifdef __ANDROID__
 #include <android/log.h>
 #endif
 
@@ -125,7 +125,7 @@ void kinc_log_args(kinc_log_level_t level, const char *format, va_list args) {
 	fprintf(level == KINC_LOG_LEVEL_INFO ? stdout : stderr, "%s", buffer);
 #endif
 
-#ifdef KORE_ANDROID
+#ifdef __ANDROID__
 	switch (level) {
 	case KINC_LOG_LEVEL_INFO:
 		__android_log_vprint(ANDROID_LOG_INFO, "Kinc", format, args);

@@ -57,7 +57,7 @@ const char *getExeDir();
 JsRuntimeHandle runtime;
 JsContextRef context;
 
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 #define CALLBACK __stdcall
 #else
 #define CALLBACK
@@ -366,7 +366,7 @@ static void run_file(const char *file_path, const char *name) {
 }
 
 int main(int argc, char **argv) {
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 	AttachProcess(GetModuleHandle(nullptr));
 #else
 	AttachProcess(nullptr);
