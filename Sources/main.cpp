@@ -47,9 +47,6 @@
 CHAKRA_API
 JsStringToPointer(_In_ JsValueRef value, _Outptr_result_buffer_(*stringLength) const wchar_t **stringValue, _Out_ size_t *stringLength);
 
-const int KROM_API = 6;
-const int KROM_DEBUG_API = 2;
-
 bool AttachProcess(HANDLE hmod);
 
 const char *getExeDir();
@@ -99,6 +96,77 @@ static void sendLogMessage(const char *format, ...) {
 	va_end(args);
 }
 
+static std::vector<std::string> code;
+
+static std::vector<std::string> split(std::string pattern) {
+	std::vector<std::string> parts;
+	size_t lastOffset = 0;
+	for (size_t i = 0; i < pattern.length(); ++i) {
+		if (pattern[i] == '/' || pattern[i] == '\\') {
+			parts.push_back(pattern.substr(lastOffset, i - lastOffset));
+			lastOffset = ++i;
+		}
+	}
+	parts.push_back(pattern.substr(lastOffset));
+	return parts;
+}
+
+static void findCode(const char *pattern, std::vector<std::string> parts, std::string current) {
+	if (parts.size() > 1) {
+		if (parts[0] == "**") {
+		}
+		else if (parts[0] == "*") {
+		}
+		else {
+			std::string subdir = current + "/" + parts[0];
+			DWORD dwAttrib = GetFileAttributesA(subdir.c_str());
+			bool exists = dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
+			if (exists) {
+				parts.erase(parts.begin());
+				findCode(pattern, parts, subdir);
+			}
+		}
+	}
+	else if (parts.size() == 1) {
+		if (parts[0] == "**") {
+			WIN32_FIND_DATAA ffd;
+			LARGE_INTEGER filesize;
+			std::string search = current + "\\*";
+			size_t length_of_arg;
+			HANDLE hFind = INVALID_HANDLE_VALUE;
+			DWORD dwError = 0;
+
+			hFind = FindFirstFileA(search.c_str(), &ffd);
+
+			if (hFind != INVALID_HANDLE_VALUE) {
+				do {
+					if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+						if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0) {
+							findCode(pattern, parts, current + "/" + ffd.cFileName);
+						}
+					}
+					else {
+						code.push_back(current + "/" + ffd.cFileName);
+					}
+				} while (FindNextFileA(hFind, &ffd) != 0);
+			}
+		}
+		else if (parts[0] == "*") {
+		}
+		else {
+		}
+	}
+}
+
+static void findCode(const char *pattern) {
+	std::vector<std::string> parts = split(pattern);
+
+	char szDir[MAX_PATH];
+	GetCurrentDirectoryA(MAX_PATH, szDir);
+
+	findCode(pattern, parts, szDir);
+}
+
 static JsValueRef CALLBACK kmake_resolve(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
 	JsPropertyIdRef codeId;
 	JsCreatePropertyId("code", strlen("code"), &codeId);
@@ -119,6 +187,7 @@ static JsValueRef CALLBACK kmake_resolve(JsValueRef callee, bool isConstructCall
 		JsCopyString(value, string, 256, &length);
 		string[length] = 0;
 		kinc_log(KINC_LOG_LEVEL_INFO, "Code: %s", string);
+		findCode(string);
 	}
 	return JS_INVALID_REFERENCE;
 }
@@ -371,6 +440,9 @@ int main(int argc, char **argv) {
 #else
 	AttachProcess(nullptr);
 #endif
+
+	_argc = argc;
+	_argv = argv;
 
 #ifdef NDEBUG
 	JsCreateRuntime(JsRuntimeAttributeEnableIdleProcessing, nullptr, &runtime);
