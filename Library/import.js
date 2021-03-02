@@ -1,1 +1,1 @@
-import { Project, resolve } from './out/project';
+import { Project } from './out/project';

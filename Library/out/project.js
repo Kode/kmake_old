@@ -20,6 +20,4 @@ export class Project {
     setDebugDir(dir) {
     }
 }
-export function resolve(project) {
-}
 //# sourceMappingURL=project.js.map

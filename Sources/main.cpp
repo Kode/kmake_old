@@ -2719,6 +2719,26 @@ namespace {
 	}
 
 	JsValueRef CALLBACK kmake_resolve(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		JsPropertyIdRef codeId;
+		JsCreatePropertyId("code", strlen("code"), &codeId);
+		JsValueRef code;
+		JsGetProperty(arguments[1], codeId, &code);
+		for (int i = 0;; ++i) {
+			bool result;
+			JsValueRef index;
+			JsIntToNumber(i, &index);
+			JsHasIndexedProperty(code, index, &result);
+			if (!result) {
+				break;
+			}
+			JsValueRef value;
+			JsGetIndexedProperty(code, index, &value);
+			char string[256];
+			size_t length;
+			JsCopyString(value, string, 256, &length);
+			string[length] = 0;
+			kinc_log(KINC_LOG_LEVEL_INFO, "Code: %s", string);
+		}
 		return JS_INVALID_REFERENCE;
 	}
 
@@ -2727,22 +2747,17 @@ namespace {
 	JsValueRef name##Func;                                                                                                                                     \
 	JsCreateFunction(funcName, nullptr, &name##Func);                                                                                                          \
 	JsCreatePropertyId(#name, strlen(#name), &name##Id);                                                                                                       \
-	JsSetProperty(krom, name##Id, name##Func, false)
+	JsSetProperty(global, name##Id, name##Func, false)
 
 #define createId(name) JsCreatePropertyId(#name, strlen(#name), &name##_id)
 
 	void bindFunctions() {
 		createId(buffer);
 
-		JsValueRef krom;
-		JsCreateObject(&krom);
-
-		addFunction(resolve, kmake_resolve);
-
 		JsValueRef global;
 		JsGetGlobalObject(&global);
 
-		JsSetProperty(global, getId("Krom"), krom, false);
+		addFunction(resolve, kmake_resolve);
 	}
 
 	JsSourceContext cookie = 1234;

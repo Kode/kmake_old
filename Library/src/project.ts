@@ -31,7 +31,3 @@ export class Project {
 
 	}
 }
-
-export function resolve(project: Project) {
-
-}
