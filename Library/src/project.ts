@@ -4,6 +4,8 @@ export class Project {
 	shaders: string[];
 	assets: string[];
 
+	codeFiles: string[];
+
 	constructor(name: string) {
 		this.name = name;
 		this.code = [];
