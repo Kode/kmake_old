@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #ifdef KORE_LINUX
 
 #include <kinc/log.h>

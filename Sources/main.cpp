@@ -19,13 +19,11 @@
 #endif
 #endif
 
-#include "pch.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <kinc/log.h>
+#include "log.h"
 
 #include "debug.h"
 #include "debug_server.h"
@@ -38,11 +36,11 @@
 #include <stdarg.h>
 #include <vector>
 
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 #include <Windows.h> // AttachConsole
 #endif
 
-#ifndef KORE_WINDOWS
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 
@@ -90,7 +88,7 @@ static void sendLogMessageArgs(const char *format, va_list args) {
 		for (size_t i = 0; i < messageLength; ++i) {
 			message.push_back(msg[i]);
 		}
-		sendMessage(message.data(), message.size());
+		//**sendMessage(message.data(), message.size());
 	}
 }
 
@@ -147,10 +145,12 @@ JsSourceContext cookie = 1234;
 JsValueRef script, source;
 
 static void runJS() {
+#if 0
 	if (debugMode) {
 		Message message = receiveMessage();
 		handleDebugMessage(message, false);
 	}
+#endif
 
 	JsValueRef undef;
 	JsGetUndefinedValue(&undef);

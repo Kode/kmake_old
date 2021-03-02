@@ -1,9 +1,6 @@
 #include "debug_server.h"
-#include "pch.h"
 
-#include <kinc/log.h>
-#include <kinc/threads/mutex.h>
-#include <kinc/threads/thread.h>
+#include "log.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -15,7 +12,7 @@
 
 #include <vector>
 
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 #include <io.h>
 #include <winsock.h>
 #else
@@ -29,6 +26,8 @@
 
 #include <ChakraCore.h>
 #include <ChakraDebug.h>
+
+#if 0
 
 namespace {
 	int PORT = 0;
@@ -347,3 +346,5 @@ bool handleDebugMessage(Message &message, bool halted) {
 	}
 	return false;
 }
+
+#endif

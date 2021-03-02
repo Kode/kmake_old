@@ -1,16 +1,15 @@
 #include "debug.h"
 #include "debug_server.h"
-#include "pch.h"
 
 #include <ChakraCore.h>
 #include <ChakraDebug.h>
 
-#include <kinc/log.h>
+#include "log.h"
 
 #include <assert.h>
 #include <vector>
 
-#ifndef KORE_WINDOWS
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 
@@ -20,6 +19,7 @@ namespace {
 		    debugEvent == JsDiagDebugEventDebuggerStatement || debugEvent == JsDiagDebugEventRuntimeException) {
 			kinc_log(KINC_LOG_LEVEL_INFO, "Debug callback: %i", debugEvent);
 
+#if 0
 			int message = IDE_MESSAGE_BREAK;
 			sendMessage(&message, 1);
 
@@ -28,12 +28,13 @@ namespace {
 				if (handleDebugMessage(message, true)) {
 					break;
 				}
-#ifdef KORE_WINDOWS
+#ifdef _WIN32
 				Sleep(100);
 #else
 				usleep(100 * 1000);
 #endif
-			}
+		}
+#endif
 		}
 		else if (debugEvent == JsDiagDebugEventCompileError) {
 			kinc_log(KINC_LOG_LEVEL_ERROR, "Script compile error.");
@@ -52,6 +53,7 @@ namespace {
 }
 
 int scriptId() {
+#if 0
 	if (::scripts.size() == 0) {
 		JsValueRef scripts;
 		JsDiagGetScripts(&scripts);
@@ -81,11 +83,11 @@ int scriptId() {
 			::scripts.push_back(script);
 		}
 	}
-
+#endif
 	return ::scripts[0].scriptId;
 }
 
 void startDebugger(JsRuntimeHandle runtimeHandle, int port) {
 	JsDiagStartDebugging(runtimeHandle, debugCallback, nullptr);
-	startServer(port);
+	//** startServer(port);
 }

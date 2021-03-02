@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #ifdef KORE_WINDOWS
 
 #include <kinc/log.h>

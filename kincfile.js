@@ -1,5 +1,6 @@
 let project = new Project('kmake');
 
+project.kore = false;
 project.cmd = true;
 project.cpp11 = true;
 project.linkTimeOptimization = false;
