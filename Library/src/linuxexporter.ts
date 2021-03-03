@@ -1,7 +1,7 @@
 import {Exporter} from './exporter';
 import {Project} from './project';
 
-export class LinuxExporter extends Exporter {
+class LinuxExporter extends Exporter {
 	constructor() {
 		super();
 	}
@@ -21,69 +21,73 @@ export class LinuxExporter extends Exporter {
 				}
 			},
 			Project: {
-				Option: {
-					title: project.name
-				},
-				Option_: {
-					pch_mode: 2
-				},
-				Option__: {
-					compiler: 'gcc'
-				},
-				Build: {
-					Target: {
-						title: 'Debug',
-						Option: [
-							{
-								output: 'bin/debug/' + project.name,
-								prefix_auto: 1,
-								extension_auto: 1
-							},
-							{
-								object_output: 'obj/Debug/'
-							},
-							{
-								type: 1
-							},
-							{
-								compiler: 'gcc'
-							},
-						],
-						Compiler: {
-							Add: {
-								option: '-g'
-							}
-						}
+				Option: [
+					{
+						title: project.name
 					},
-					Target_: {
-						title: 'Release',
-						Option: [
-							{
-								output: 'bin/Release/' + project.name,
-								prefix_auto: 1,
-								extension_auto: 1
-							},
-							{
-								object_output: 'obj/Release/'
-							},
-							{
-								type: 0
-							},
-							{
-								compiler: 'gcc'
-							},
-						],
-						Compiler: {
-							Add: {
-								option: '-O2'
+					{
+						pch_mode: 2
+					},
+					{
+						compiler: 'gcc'
+					}
+				],
+				Build: {
+					Target: [
+						{
+							title: 'Debug',
+							Option: [
+								{
+									output: 'bin/debug/' + project.name,
+									prefix_auto: 1,
+									extension_auto: 1
+								},
+								{
+									object_output: 'obj/Debug/'
+								},
+								{
+									type: 1
+								},
+								{
+									compiler: 'gcc'
+								},
+							],
+							Compiler: {
+								Add: {
+									option: '-g'
+								}
 							}
 						},
-						Linker: {
-							Add: {
-								option: '-s'
+						{
+							title: 'Release',
+							Option: [
+								{
+									output: 'bin/Release/' + project.name,
+									prefix_auto: 1,
+									extension_auto: 1
+								},
+								{
+									object_output: 'obj/Release/'
+								},
+								{
+									type: 0
+								},
+								{
+									compiler: 'gcc'
+								},
+							],
+							Compiler: {
+								Add: {
+									option: '-O2'
+								}
+							},
+							Linker: {
+								Add: {
+									option: '-s'
+								}
 							}
 						}
-					}
+					]
 				},
 				Compiler: {
 					Add: {
@@ -144,8 +148,40 @@ export class LinuxExporter extends Exporter {
 
 		return this.toXml(cbp);
 	}
+	
+	toXmlInner(obj: any): string {
+		let xml = '';
+		for (const [key, value] of Object.entries(obj)) {
+			if (Array.isArray(value)) {
+				xml += '<' + key + '>\n';
+				for (let i = 0; i < value.length; ++i) {
+					xml += this.toXmlInner(value[i]) + '\n';
+				}
+				xml += '</' + key + '>\n';
+			}
+			else if (typeof value === 'object' && value !== null) {
+				//xml += '\t<' + key + '>\n' + this.toXmlInner(value) + '</' + key + '>\n';
+				xml += '<' + key + '></' + key + '>\n';
+			}
+			else {
+				xml += '\t<' + key + '>\n' + value + '</' + key + '>\n';
+			}
+		}
+		return xml;
+	}
 
 	toXml(obj: any): string {
-		return '';
+		let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>\n';
+
+		for (const [key, value] of Object.entries(obj)) {
+			if (typeof value === 'object' && value !== null) {
+				xml += '<' + key + '>\n' + this.toXmlInner(value) + '</' + key + '>\n';
+			}
+			else {
+				xml += '<' + key + '>\n' + value + '</' + key + '>\n';
+			}
+		}
+
+		return xml;
 	}
 }

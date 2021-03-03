@@ -167,28 +167,113 @@ static void findCode(const char *pattern) {
 	findCode(pattern, parts, szDir);
 }
 
+static char kmake_dir[256];
+static JsSourceContext next_cookie = 1234;
+
+static void run_exporter() {
+	char file_path[256];
+	strcpy(file_path, kmake_dir);
+	strcat(file_path, "/Library/out/linuxexporter.js");
+
+	FILE *file = fopen(file_path, "rb");
+	fseek(file, 0, SEEK_END);
+	size_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	const char *extra = "\nconst exporter = new LinuxExporter(); write(exporter.exportSolution(project));";
+
+	char *code = (char *)malloc(size + 1 + strlen(extra));
+	assert(code != NULL);
+	fread(code, 1, size, file);
+	code[size] = 0;
+	strcat(code, extra);
+
+	fclose(file);
+
+	JsValueRef source;
+	JsCreateString("exporter", strlen("exporter"), &source);
+
+	JsSourceContext cookie = next_cookie;
+	next_cookie += 1;
+
+	JsModuleRecord record;
+	JsValueRef specifier;
+	JsCreateString("exporter", strlen("exporter"), &specifier);
+	JsErrorCode err = JsInitializeModuleRecord(nullptr, specifier, &record);
+	assert(err == JsErrorCode::JsNoError);
+
+	JsValueRef exception;
+	err = JsParseModuleSource(record, next_cookie, (BYTE *)code, size + strlen(extra), JsParseModuleSourceFlags_DataIsUTF8, &exception);
+	assert(err == JsErrorCode::JsNoError);
+	free(code);
+
+	JsValueRef result;
+	err = JsModuleEvaluation(record, &result);
+	assert(err == JsErrorCode::JsNoError);
+}
+
+static JsValueRef CALLBACK kmake_write(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+	char *string = (char *)malloc(1024 * 1024 * 16);
+	size_t length;
+	JsCopyString(arguments[1], string, 1024 * 1024 * 16, &length);
+
+	FILE *file;
+	fopen_s(&file, "projectfile", "wb");
+	assert(file != NULL);
+	fwrite(string, 1, length, file);
+	fclose(file);
+
+	return JS_INVALID_REFERENCE;
+}
+
 static JsValueRef CALLBACK kmake_resolve(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
-	JsPropertyIdRef codeId;
-	JsCreatePropertyId("code", strlen("code"), &codeId);
-	JsValueRef code;
-	JsGetProperty(arguments[1], codeId, &code);
-	for (int i = 0;; ++i) {
-		bool result;
+	{
+		JsPropertyIdRef codeId;
+		JsCreatePropertyId("code", strlen("code"), &codeId);
+		JsValueRef code;
+		JsGetProperty(arguments[1], codeId, &code);
+		for (int i = 0;; ++i) {
+			bool result;
+			JsValueRef index;
+			JsIntToNumber(i, &index);
+			JsHasIndexedProperty(code, index, &result);
+			if (!result) {
+				break;
+			}
+			JsValueRef value;
+			JsGetIndexedProperty(code, index, &value);
+			char string[256];
+			size_t length;
+			JsCopyString(value, string, 256, &length);
+			string[length] = 0;
+			kinc_log(KINC_LOG_LEVEL_INFO, "Code: %s", string);
+			findCode(string);
+		}
+	}
+
+	JsValueRef codeFiles;
+	JsCreateArray(code.size(), &codeFiles);
+	for (size_t i = 0; i < code.size(); ++i) {
 		JsValueRef index;
 		JsIntToNumber(i, &index);
-		JsHasIndexedProperty(code, index, &result);
-		if (!result) {
-			break;
-		}
-		JsValueRef value;
-		JsGetIndexedProperty(code, index, &value);
-		char string[256];
-		size_t length;
-		JsCopyString(value, string, 256, &length);
-		string[length] = 0;
-		kinc_log(KINC_LOG_LEVEL_INFO, "Code: %s", string);
-		findCode(string);
+
+		JsValueRef string;
+		JsCreateString(code[i].c_str(), code[i].size(), &string);
+
+		JsSetIndexedProperty(codeFiles, index, string);
 	}
+
+	JsPropertyIdRef codeFilesId;
+	JsCreatePropertyId("codeFiles", strlen("codeFiles"), &codeFilesId);
+	JsSetProperty(arguments[1], codeFilesId, codeFiles, true);
+
+	JsValueRef global;
+	JsGetGlobalObject(&global);
+
+	JsPropertyIdRef project;
+	JsCreatePropertyId("project", strlen("project"), &project);
+	JsSetProperty(global, project, arguments[1], false);
+
 	return JS_INVALID_REFERENCE;
 }
 
@@ -208,9 +293,9 @@ static void bindFunctions() {
 	JsGetGlobalObject(&global);
 
 	addFunction(resolve, kmake_resolve);
+	addFunction(write, kmake_write);
 }
 
-JsSourceContext cookie = 1234;
 JsValueRef script, source;
 
 static void runJS() {
@@ -330,9 +415,6 @@ static void find_kmake_dir(char *exe_path, char *kmake_dir) {
 	return;
 }
 
-static char kmake_dir[256];
-static JsSourceContext next_cookie = 1234;
-
 static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord referencingModule, _In_ JsValueRef specifier,
                                                          _Outptr_result_maybenull_ JsModuleRecord *dependentModuleRecord) {
 	char filename[256];
@@ -342,7 +424,7 @@ static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord ref
 
 	char file_path[256];
 	strcpy(file_path, kmake_dir);
-	strcat(file_path, "/Library/");
+	strcat(file_path, "/Library/out/");
 	if (filename[0] == '.') {
 		strcat(file_path, &filename[1]);
 	}
@@ -393,7 +475,7 @@ static void run_file(const char *file_path, const char *name) {
 
 	char import_path[256];
 	strcpy(import_path, kmake_dir);
-	strcat(import_path, "\\Library\\import.js");
+	strcat(import_path, "/Library/out/import.js");
 
 	FILE *import_file = fopen(import_path, "rb");
 	fseek(import_file, 0, SEEK_END);
@@ -420,6 +502,7 @@ static void run_file(const char *file_path, const char *name) {
 	JsValueRef specifier;
 	JsCreateString(name, strlen(name), &specifier);
 	JsErrorCode err = JsInitializeModuleRecord(nullptr, specifier, &record);
+	assert(err == JsErrorCode::JsNoError);
 
 	JsSetModuleHostInfo(record, JsModuleHostInfo_FetchImportedModuleCallback, fetch_imported_module);
 	JsSetModuleHostInfo(record, JsModuleHostInfo_NotifyModuleReadyCallback, notify_module_ready);
@@ -471,6 +554,8 @@ int main(int argc, char **argv) {
 		JsValueRef result;
 		JsCallFunction(task, nullptr, 0, &result);
 	}
+
+	run_exporter();
 
 	return 0;
 }
