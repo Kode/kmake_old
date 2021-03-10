@@ -1,7 +1,7 @@
 import {Exporter} from './exporter';
 import {Project} from './project';
 
-class LinuxExporter extends Exporter {
+export class LinuxExporter extends Exporter {
 	constructor() {
 		super();
 	}

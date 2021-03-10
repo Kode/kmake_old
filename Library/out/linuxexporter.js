@@ -1,5 +1,5 @@
 import { Exporter } from './exporter';
-class LinuxExporter extends Exporter {
+export class LinuxExporter extends Exporter {
     constructor() {
         super();
     }
