@@ -1,5 +1,5 @@
-import { Project } from './project';
-import { LinuxExporter } from './linuxexporter';
+import { Project } from './project.js';
+import { LinuxExporter } from './linuxexporter.js';
 
 const exporter = new LinuxExporter();
 const project = new Project('test');

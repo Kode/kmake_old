@@ -1,5 +1,5 @@
-import {Exporter} from './exporter';
-import {Project} from './project';
+import {Exporter} from './exporter.js';
+import {Project} from './project.js';
 
 export class LinuxExporter extends Exporter {
 	constructor() {

@@ -1,4 +1,4 @@
-import { Exporter } from './exporter';
+import { Exporter } from './exporter.js';
 export class LinuxExporter extends Exporter {
     constructor() {
         super();
