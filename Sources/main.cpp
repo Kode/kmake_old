@@ -212,6 +212,34 @@ static void run_exporter() {
 	assert(err == JsErrorCode::JsNoError);
 }
 
+static JsValueRef CALLBACK console_log(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+	if (argumentCount < 2) {
+		return JS_INVALID_REFERENCE;
+	}
+	JsValueRef stringValue;
+	JsConvertValueToString(arguments[1], &stringValue);
+
+	const wchar_t *str = nullptr;
+	size_t strLength = 0;
+	JsStringToPointer(stringValue, &str, &strLength);
+
+	size_t done = 0;
+	char message[512];
+	while (done < strLength) {
+		size_t i;
+		for (i = 0; i < 510; ++i) {
+			message[i] = str[done++];
+			if (done >= strLength) {
+				message[++i] = '\n';
+				++i;
+				break;
+			}
+		}
+		message[i] = 0;
+		sendLogMessage(message);
+	}
+	return JS_INVALID_REFERENCE;
+}
 static JsValueRef CALLBACK kmake_write(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
 	char *string = (char *)malloc(1024 * 1024 * 16);
 	size_t length;
@@ -277,23 +305,31 @@ static JsValueRef CALLBACK kmake_resolve(JsValueRef callee, bool isConstructCall
 	return JS_INVALID_REFERENCE;
 }
 
-#define addFunction(name, funcName)                                                                                                                            \
+#define addFunction(name, funcName,object)                                                                                                                            \
 	JsPropertyIdRef name##Id;                                                                                                                                  \
 	JsValueRef name##Func;                                                                                                                                     \
 	JsCreateFunction(funcName, nullptr, &name##Func);                                                                                                          \
 	JsCreatePropertyId(#name, strlen(#name), &name##Id);                                                                                                       \
-	JsSetProperty(global, name##Id, name##Func, false)
+	JsSetProperty(object, name##Id, name##Func, false)
 
 #define createId(name) JsCreatePropertyId(#name, strlen(#name), &name##_id)
 
 static void bindFunctions() {
 	createId(buffer);
 
-	JsValueRef global;
+	JsValueRef global, console;
 	JsGetGlobalObject(&global);
 
-	addFunction(resolve, kmake_resolve);
-	addFunction(write, kmake_write);
+	addFunction(resolve, kmake_resolve,global);
+	addFunction(write, kmake_write,global);
+
+	JsPropertyIdRef consolePropId;
+	JsCreateObject(&console);
+	addFunction(log, console_log, console);
+
+	// set console as property of global object
+	JsCreatePropertyId("console", strlen("console"), &consolePropId);
+	JsSetProperty(global, consolePropId, console, false);
 }
 
 JsValueRef script, source;
@@ -417,10 +453,34 @@ static void find_kmake_dir(char *exe_path, char *kmake_dir) {
 
 static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord referencingModule, _In_ JsValueRef specifier,
                                                          _Outptr_result_maybenull_ JsModuleRecord *dependentModuleRecord) {
-	char filename[256];
+	JsValueRef caller;
+	JsGetModuleHostInfo(referencingModule, JsModuleHostInfo_Url, &caller);
+	char importerPath[256];
 	size_t length;
+	JsCopyString(caller, importerPath, 255, &length);
+	importerPath[length] = 0;
+
+	char filename[256];
 	JsCopyString(specifier, filename, 255, &length);
 	filename[length] = 0;
+
+	size_t strLen = strlen(importerPath);
+	char *token = strtok(importerPath, "/");
+	char out[256] = {0};
+	int count = 0;
+	while (token != NULL && strlen(token) != strLen) {
+		++count;
+		char *lastTok = token;
+		token = strtok(NULL, "/");
+		if (token != NULL) {
+			strcat(out, lastTok);
+			strcat(out, "/");
+		}
+	}
+	if (count > 0 && filename[0] == '.') {
+		strcat(out, &filename[2]);
+		strcpy(filename, out);
+	}
 
 	char file_path[256];
 	strcpy(file_path, kmake_dir);
@@ -431,7 +491,11 @@ static JsErrorCode CHAKRA_CALLBACK fetch_imported_module(_In_ JsModuleRecord ref
 	else {
 		strcat(file_path, filename);
 	}
-	strcat(file_path, ".js");
+
+	if (strstr(file_path, ".js") != file_path + (strlen(file_path) - 3)) // !endsWith(".js")
+	{
+		strcat(file_path, ".js");
+	}
 
 	FILE *file = fopen(file_path, "rb");
 	fseek(file, 0, SEEK_END);
@@ -556,6 +620,5 @@ int main(int argc, char **argv) {
 	}
 
 	run_exporter();
-
 	return 0;
 }
