@@ -2,6 +2,8 @@
 
 #include "log.h"
 
+#include "utils.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -145,12 +147,6 @@ void startServer(int port) {
 int scriptId();
 extern JsRuntimeHandle runtime;
 
-JsPropertyIdRef getId(const char *name) {
-	JsPropertyIdRef id;
-	JsErrorCode err = JsCreatePropertyId(name, strlen(name), &id);
-	assert(err == JsNoError);
-	return id;
-}
 
 namespace {
 	class Stack {

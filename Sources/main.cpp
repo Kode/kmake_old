@@ -24,9 +24,12 @@
 #include <string.h>
 
 #include "log.h"
+#include "utils.h"
 
 #include "debug.h"
 #include "debug_server.h"
+
+#include "fs.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -609,6 +612,7 @@ int main(int argc, char **argv) {
 
 	find_kmake_dir(argv[0], kmake_dir);
 
+	fs_init();
 	run_file("kfile.js", "kfile.js");
 
 	JsValueRef task = JS_INVALID_REFERENCE;
@@ -619,6 +623,6 @@ int main(int argc, char **argv) {
 		JsCallFunction(task, nullptr, 0, &result);
 	}
 
-	run_exporter();
+	//run_exporter();
 	return 0;
 }
