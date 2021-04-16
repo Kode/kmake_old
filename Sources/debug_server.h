@@ -33,7 +33,3 @@ void startServer(int port);
 void sendMessage(int* data, int size);
 Message receiveMessage();
 bool handleDebugMessage(Message& message, bool halted);
-
-typedef void *JsRef;
-typedef JsRef JsPropertyIdRef;
-JsPropertyIdRef getId(const char* name);

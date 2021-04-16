@@ -3,3 +3,8 @@
 /Deployment/*.frag
 /Deployment/*.vert
 /Deployment/Krom
+.vscode/*
+!.vscode/settings.json
+/Library/.vscode/*
+!/Library/.vscode/launch.json
+
